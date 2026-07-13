@@ -1,0 +1,71 @@
+{
+  "name": "sramo",
+  "version": "1.0.0",
+  "private": true,
+  "main": "tmdb-client/main.js",
+  "description": "Open-source media streaming platform inspired by Stremio",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "start": "node packages/server/dist/index.js",
+    "dev": "concurrently \"npm run dev -w packages/server\" \"npm run dev -w packages/web\"",
+    "dev:server": "npm run dev -w packages/server",
+    "dev:web": "npm run dev -w packages/web",
+    "dev:desktop": "npm run dev -w packages/desktop",
+    "build:core": "npm run build -w packages/core",
+    "build:server": "npm run build -w packages/server",
+    "build:web": "npm run build -w packages/web",
+    "electron:start": "electron .",
+    "electron:dev": "cross-env ELECTRON_DEV=true electron .",
+    "electron:build": "npm run build:web && electron-builder --win",
+    "electron:package": "electron-builder --win --publish never"
+  },
+  "build": {
+    "appId": "com.sramo.app",
+    "productName": "SRAMO",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "tmdb-client/**/*",
+      "packages/server/**/*",
+      "packages/core/**/*",
+      "packages/web/dist/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "packages/web/dist",
+        "to": "web/dist"
+      }
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "packages/web/public/favicon.ico",
+      "artifactName": "SRAMO-${version}.${ext}",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "artifactName": "SRAMO-Portable-${version}.${ext}"
+    }
+  },
+  "author": "SRAMO",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.6.3",
+    "react-virtuoso": "^4.18.7"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^42.3.3",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.7.0"
+  }
+}
