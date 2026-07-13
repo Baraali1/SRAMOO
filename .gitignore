@@ -19,3 +19,5 @@ release/
 test_prov_direct.js
 torrent_test.bin
 tmdb-client/
+cache/
+test-server.mjs
