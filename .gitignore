@@ -6,7 +6,6 @@ dist-electron/
 *.txt
 *.bin
 test-results/
-.github/
 *.db
 dev-log.txt
 ecosystem.config.cjs
