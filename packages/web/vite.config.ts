@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  base: '/SRAMOO/',
+  base: process.env.GITHUB_PAGES ? '/SRAMOO/' : '/',
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,

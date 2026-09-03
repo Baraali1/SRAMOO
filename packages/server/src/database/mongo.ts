@@ -11,7 +11,7 @@ const MONGODB_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/sramo_db
 
 export async function connectDB(): Promise<void> {
   try {
-    await mongoose.connect(MONGODB_URI)
+    await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 3000 })
     console.log('[MongoDB] Connected —', mongoose.connection.db?.databaseName)
   } catch (err) {
     console.warn('[MongoDB] Unavailable — auth disabled. Streaming works without it.')

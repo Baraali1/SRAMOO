@@ -17,6 +17,8 @@ release/
 .playwright-cli/
 test_prov_direct.js
 torrent_test.bin
-tmdb-client/
+tmdb-client/*
+!tmdb-client/config.js
+.netlify/
 cache/
 test-server.mjs
