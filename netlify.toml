@@ -1,11 +1,14 @@
 [build]
-  command = "npm ci --include=optional && npm rebuild @tailwindcss/oxide && npm run build --workspace packages/web"
+  command = "npm ci --include=optional && npm install --no-save @tailwindcss/oxide-linux-x64-gnu && npm run build --workspace packages/web"
   publish = "packages/web/dist"
   functions = "netlify/functions"
 
 [build.environment]
   TMDB_API_KEY = "d52274bb19dbdd5dd305c09a7afcf1ef"
   NODE_VERSION = "18"
+  npm_config_platform = "linux"
+  npm_config_arch = "x64"
+  npm_config_libc = "glibc"
 
 [[redirects]]
   from = "/api/*"
