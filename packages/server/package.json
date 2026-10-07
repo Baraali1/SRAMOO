@@ -14,8 +14,9 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "iconv-lite": "^0.7.2",
-    "webtorrent": "3.0.21",
-    "yauzl": "^2.10.0"
+    "webtoken": "3.0.21",
+    "yauzl": "^2.10.0",
+    "mongoose": "^6.11.13"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

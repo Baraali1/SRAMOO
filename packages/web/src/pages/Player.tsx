@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext.js'
 import { api, IMG } from '../api.js'
 import { tmdb } from '../tmdb.js'
 
@@ -273,12 +274,19 @@ export function Player() {
   }, [id])
 
   // ── Persistent progress saver (auto-save every 10s + on ended) ──
+  const { user } = useAuth()
   useEffect(() => {
     if (!v || !playing) return
     let timer: NodeJS.Timeout
-    const saveProgress = () => {
+    const saveProgress = async () => {
       const t = +v.currentTime.toFixed(1)
       localStorage.setItem(`sramo_progress_${id}`, JSON.stringify(t))
+      // Also save to server if user is logged in
+      if (user?.id) {
+        try {
+          await api.post(`/api/history/${id}/progress`, { progress: t }).catch(() => {})
+        } catch {}
+      }
     }
     timer = setInterval(saveProgress, 10000)
     const handleEnded = () => {
@@ -290,7 +298,7 @@ export function Player() {
       clearInterval(timer)
       v.removeEventListener('ended', handleEnded)
     }
-  }, [v, playing, id])
+  }, [v, playing, id, user?.id])
 
   const showBar = useCallback(() => {
     setBarVisible(true)
