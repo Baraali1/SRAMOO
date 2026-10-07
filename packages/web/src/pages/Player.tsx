@@ -1075,15 +1075,13 @@ export function Player() {
                         </button>
                       ))}
 
-                    {!subsLoading && subtitles.length === 0 && (
-                      <div style={{ padding:'6px 10px' }}>
-                        <p style={{ fontSize:11,color:'#555',margin:'0 0 6px' }}>No subtitles found</p>
-                        <button onClick={() => setSubFetchKey(k => k + 1)}
-                          style={{ width:'100%',padding:'6px 10px',borderRadius:6,border:'1px solid rgba(255,255,255,0.08)',background:'rgba(255,255,255,0.04)',color:'#1a98ff',fontSize:11,cursor:'pointer' }}>
-                          Retry
-                        </button>
-                      </div>
-                    )}
+{!subsLoading && subtitles.length === 0 && (
+                       <div style={{ padding:'6px 10px' }}>
+                         <p style={{ fontSize:11,color:'#555',margin:'0 0 6px' }}>لا توجد ترجمات</p>
+                         <p style={{ fontSize:10,color:'#666',marginBottom:6 }}>تعذر تحميل الترجمة من المصدر الخارجيّ (timeout). جرب<button onClick={() => setSubFetchKey(k => k + 1)} style={{ color:'#1a98ff',textDecoration:'underline',cursor:'pointer' }}>إعادة المحاولة</button></p>
+                         <p style={{ fontSize:10,color:'#888' }}>إذا استمر الخطأ، يمكن محاولة تشغيل الترجمة من قائمة الإضافات (Addons → Builtin subtitles)</p>
+                       </div>
+                     )}
 
                     {subsOn && activeSub && <div style={{ height:1,background:'rgba(255,255,255,0.06)',margin:'6px 0' }} />}
 
