@@ -64,6 +64,17 @@ export default function App() {
   const location = useLocation()
   const navigate = useNavigate()
   const [profile, setProfile] = useState<Profile | null>(() => loadProfile())
+  const [darkMode, setDarkMode] = useState(() => {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const stored = localStorage.getItem('sramo_dark_mode')
+    if (stored !== null) return stored === 'true'
+    return prefersDark
+  })
+
+  useEffect(() => {
+    if (darkMode) document.body.classList.add('dark')
+    else document.body.classList.remove('dark')
+  }, [darkMode])
 
   useKeyboard({
     '/': () => {

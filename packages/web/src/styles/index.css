@@ -29,6 +29,21 @@
   --sidebar-width: 68px;
   --header-height: 56px;
   --transition-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  --dark-mode: false;
+}
+
+.dark {
+  --bg-deep: #0d0f13;
+  --bg-surface: #1a1d26;
+  --bg-card: #1e2130;
+  --accent: #64ffda;
+  --accent-glow: rgba(100, 255, 218, 0.25);
+  --text-primary: #e0e0e8;
+  --text-secondary: #78788c;
+  --text-muted: #5a5a70;
+  --glass-bg: rgba(26, 32, 44, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.04);
+  --glass-light: rgba(255, 255, 255, 0.03);
 }
 
 *,

@@ -272,6 +272,26 @@ export function Player() {
     }).catch(() => {})
   }, [id])
 
+  // ── Persistent progress saver (auto-save every 10s + on ended) ──
+  useEffect(() => {
+    if (!v || !playing) return
+    let timer: NodeJS.Timeout
+    const saveProgress = () => {
+      const t = +v.currentTime.toFixed(1)
+      localStorage.setItem(`sramo_progress_${id}`, JSON.stringify(t))
+    }
+    timer = setInterval(saveProgress, 10000)
+    const handleEnded = () => {
+      saveProgress()
+      v.removeEventListener('ended', handleEnded)
+    }
+    v.addEventListener('ended', handleEnded)
+    return () => {
+      clearInterval(timer)
+      v.removeEventListener('ended', handleEnded)
+    }
+  }, [v, playing, id])
+
   const showBar = useCallback(() => {
     setBarVisible(true)
     if (hideTimer.current) clearTimeout(hideTimer.current)
@@ -503,6 +523,35 @@ export function Player() {
     el.textContent = `video::cue { font-size: ${subFontSize}em; text-shadow: ${subShadow ? '2px 2px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.5)' : 'none'}; background: transparent; }`
   }, [subFontSize, subShadow])
 
+  // ── Subtitle progress tracker ──
+  useEffect(() => {
+    if (!v || !subsOn || !activeSub || activeSub.startsWith('_inband_')) return
+    const track = v.textTracks.find(t => t.kind === 'subtitles')
+    if (!track || !track.activeCues) return
+    let lastCueTime = 0
+    const updateProgress = () => {
+      const active = Array.from(track.activeCues).map(c => c.text)
+      if (active.length > 0) {
+        const cue = track.activeCues[0]
+        const progress = +cue.start.toFixed(1)
+        if (progress !== lastCueTime) {
+          lastCueTime = progress
+          const progressEl = document.getElementById('sub-progress-time') as HTMLSpanElement | null
+          if (progressEl) progressEl.textContent = `${progress}s`
+          // console.log('Subtitle active at', progress, 's')
+        }
+      }
+    }
+    track.addEventListener('cuechange', updateProgress)
+    // Also check on timeupdate
+    const timeHandler = () => updateProgress()
+    v.addEventListener('timeupdate', timeHandler)
+    return () => {
+      track.removeEventListener('cuechange', updateProgress)
+      v.removeEventListener('timeupdate', timeHandler)
+    }
+  }, [v, subsOn, activeSub])
+
   // ── Fetch torrent file list ──
   useEffect(() => {
     const m = streamUrl?.match(/\/api\/stream\/torrent\/([a-f0-9]+)/i)
@@ -558,7 +607,7 @@ export function Player() {
               setPhase('ready')
               setDuration(v.duration || 0)
               setCodecError(false)
-              const restoreTime = resumeTime > 0 ? resumeTime : (savedProgress || 0)
+              const restoreTime = resumeTime > 0 ? resumeTime : (savedProgress || 0) || (() => { try { return JSON.parse(localStorage.getItem(`sramo_progress_${id}`) || 'null') } catch { return null } })()
               if (restoreTime > 0) {
                 if (isTranscodeRef.current) {
                   seekInRange(restoreTime)
@@ -836,7 +885,7 @@ export function Player() {
           {/* Content */}
           <div style={{ position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24 }}>
             <div style={{ width:56,height:56,border:'3px solid rgba(255,255,255,0.06)',borderTopColor:'#1a98ff',borderRadius:'50%',animation:'spin-slow 0.7s linear infinite',marginBottom:24 }} />
-            <p style={{ fontSize:22,fontWeight:800,color:'#fff',margin:'0 0 4px',textAlign:'center',letterSpacing:'-0.02em',textShadow:'0 2px 12px rgba(0,0,0,0.5)' }}>
+            <p style={{ fontSize:22,fontWeight:800,color:'rgba(255,255,255,0.9)',textAlign:'center',letterSpacing:'-0.02em',textShadow:'0 2px 12px rgba(0,0,0,0.5), 0 0 20px rgba(26,152,255,0.3)' }}>
               {metaName || title}
             </p>
             {torrentStatus && (
@@ -979,10 +1028,10 @@ export function Player() {
               <span style={{ fontSize:13,fontWeight:500,color:'rgba(255,255,255,0.5)',fontVariantNumeric:'tabular-nums',userSelect:'none' }}>{formatTime(displayTime)}{displayDur > 0 ? ` / ${formatTime(displayDur)}` : ''}</span>
             </div>
 
-            {/* Right: subs + audio + volume + fullscreen */}
+            {/* Right: subs + audio + volume + pip + fullscreen */}
             <div style={{ display:'flex',alignItems:'center',gap:4 }}>
 
-              {/* Subtitles dropdown */}
+{/* Subtitles dropdown */}
               <div style={{ position:'relative' }}>
                 <button onClick={() => { setShowSubMenu(!showSubMenu); setShowAudioMenu(false); setShowFileMenu(false); if (!showSubMenu) setSubSearch('') }} aria-label="Subtitles"
                   style={{ width:44,height:44,borderRadius:'50%',border:'none',background:'transparent',color:subsOn?'#1a98ff':'rgba(255,255,255,0.5)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>
@@ -991,8 +1040,15 @@ export function Player() {
                 {showSubMenu && (
                   <div style={{ position:'absolute',bottom:'100%',right:0,marginBottom:8,background:'rgba(7,7,12,0.94)',backdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:10,padding:8,minWidth:200,zIndex:10,maxHeight:400,overflowY:'auto' }}>
                     <div style={{ fontSize:10,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'0.06em',padding:'4px 10px',marginBottom:4 }}>Subtitles</div>
-
                     <button onClick={() => selectSub(null)} style={{ display:'flex',alignItems:'center',width:'100%',padding:'6px 10px',border:'none',background:!activeSub?'rgba(26,152,255,0.08)':'transparent',fontSize:12,color:!activeSub?'#1a98ff':'rgba(255,255,255,0.6)',borderRadius:6,cursor:'pointer' }}>Off</button>
+                </div>
+              </div>
+
+              {/* Picture-in-PiP button */}
+              <button onClick={() => v?.requestPictureInPicture?.()?.catch(() => {})} aria-label="Picture-in-PiP"
+                style={{ width:44,height:44,borderRadius:'50%',border:'none',background:'transparent',color:'rgba(255,255,255,0.5)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" ry="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="14" y2="16"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+              </button>
 
                     {subsLoading && (
                       <div style={{ display:'flex',alignItems:'center',justifyContent:'center',padding:'6px 0',gap:8 }}>
@@ -1062,6 +1118,7 @@ export function Player() {
                       <div style={{ display:'flex',alignItems:'center',gap:6 }}>
                         <span style={{ fontSize:11,color:'#666' }}>Position</span>
                         <span style={{ fontSize:11,color:'#999',marginRight:'auto' }}>{subLine}%</span>
+                        <span style={{ fontSize:10,color:'#666',marginLeft:4 }} id="sub-progress-time">0.0s</span>
                         <button onClick={() => setSubLine(p => Math.max(10, p - 5))} style={{ width:24,height:24,borderRadius:4,border:'1px solid rgba(255,255,255,0.06)',background:'rgba(255,255,255,0.04)',color:'#aaa',cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',justifyContent:'center' }}>−</button>
                         <button onClick={() => setSubLine(p => Math.min(95, p + 5))} style={{ width:24,height:24,borderRadius:4,border:'1px solid rgba(255,255,255,0.06)',background:'rgba(255,255,255,0.04)',color:'#aaa',cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',justifyContent:'center' }}>+</button>
                       </div>
