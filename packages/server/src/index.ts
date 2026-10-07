@@ -12,6 +12,7 @@ import { createApiRouter } from './api/index.js'
 import { createAuthRouter } from './auth/routes.js'
 import { connectDB } from './database/mongo.js'
 import { tmdbProvider } from './providers/tmdb.js'
+import { getScraperStreams } from './providers/streams-scraper.js'
 import { subtitleProvider } from './providers/subtitles.js'
 import { yifySubtitleProvider } from './providers/subtitles-yify.js'
 import { opensubtitlesProvider } from './providers/subtitles-opensubtitles.js'
@@ -54,6 +55,11 @@ export class SramoServer {
 
     // Register providers (priority order: local agent → YIFY → v3 addon → Wyzie → OpenSubtitles → legacy)
     this.providerRegistry.registerMetadata(tmdbProvider)
+    this.providerRegistry.registerStream({
+      name: 'Torrent Scraper (PirateBay+YTS)',
+      version: '1.0.0',
+      getStreams: (type, id) => getScraperStreams(type, id),
+    })
     this.providerRegistry.registerSubtitles(subtitleAgentProvider)
     this.providerRegistry.registerSubtitles(yifySubtitleProvider)
     this.providerRegistry.registerSubtitles(wyzieSubtitleProvider)

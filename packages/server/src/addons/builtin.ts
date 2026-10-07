@@ -1,4 +1,5 @@
 import { createManifest, type Manifest, type ContentType, type MetaItem, type Stream } from '@sramo/core'
+import { getScraperStreams } from '../providers/streams-scraper.js'
 
 export class BuiltinAddon {
   manifest: Manifest
@@ -49,6 +50,12 @@ export class BuiltinAddon {
   }
 
   async getStream(type: ContentType, id: string): Promise<{ streams: Stream[] }> {
-    return { streams: [] }
+    try {
+      const streams = await getScraperStreams(type, id)
+      return { streams }
+    } catch (err: any) {
+      console.error('[BuiltinAddon] getStream failed:', err?.message || err)
+      return { streams: [] }
+    }
   }
 }

@@ -13,7 +13,9 @@
     "@sramo/core": "1.0.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "webtorrent": "^3.0.16"
+    "iconv-lite": "^0.7.2",
+    "webtorrent": "3.0.21",
+    "yauzl": "^2.10.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

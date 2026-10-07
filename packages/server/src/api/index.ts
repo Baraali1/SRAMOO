@@ -2,6 +2,7 @@
 import { Router, Request, Response } from 'express';
 import { streamTorrentHandler, transcodeTorrentHandler, getTorrentFiles, getTorrentStatus, getActiveTorrent } from '../streaming/torrent.js';
 import { downloadSubtitle } from '../providers/subtitles-opensubtitles.js';
+import iconv from 'iconv-lite';
 import fs from 'fs';
 import path from 'path';
 const SUB_CACHE_DIR = path.resolve(import.meta.dirname, '../../cache/subs');
@@ -11,6 +12,28 @@ function p(val: any): string {
     if (Array.isArray(val))
         return String(val[0] ?? '');
     return '';
+}
+function decodeSubtitleBuffer(buf: Buffer): string {
+    if (buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf)
+        buf = buf.subarray(3);
+    if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xfe)
+        return buf.subarray(2).toString('utf16le');
+    if (buf.length >= 2 && buf[0] === 0xfe && buf[1] === 0xff)
+        return iconv.decode(buf.subarray(2), 'utf16-be');
+    try {
+        return new TextDecoder('utf-8', { fatal: true }).decode(buf);
+    }
+    catch { /* not valid UTF-8 — fall through */ }
+    try {
+        const ar = iconv.decode(buf, 'win1256');
+        const arabic = ar.match(/[\u0600-\u06FF]/g)?.length ?? 0;
+        if (arabic > ar.length * 0.15)
+            return ar;
+        return iconv.decode(buf, 'win1252');
+    }
+    catch {
+        return buf.toString('latin1');
+    }
 }
 function convertSrtToVtt(srt: string): string {
     const vtt = srt
@@ -30,6 +53,7 @@ function cleanSubtitleText(text: string): string {
         /\S+\.org\/en\/(subtitles|search)/gi,
         /please\s+(visit|check|see)\s+\S+/gi,
     ];
+    text = text.replace(/<\/?font[^>]*>/gi, '');
     const lines = text.split('\n');
     const cleaned = lines.filter(line => {
         const trimmed = line.trim();
@@ -272,7 +296,7 @@ export function createApiRouter(addonManager: any, db: any, registry: any) {
                                     return;
                                 }
                                 readStream.on('data', (chunk) => chunks.push(chunk));
-                                readStream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+                                readStream.on('end', () => resolve(decodeSubtitleBuffer(Buffer.concat(chunks))));
                                 readStream.on('error', reject);
                             });
                         });
@@ -286,7 +310,7 @@ export function createApiRouter(addonManager: any, db: any, registry: any) {
                 res.send(vtt);
                 return;
             }
-            const text = await response.text();
+            const text = decodeSubtitleBuffer(Buffer.from(await response.arrayBuffer()));
             res.set('Content-Type', 'text/vtt; charset=utf-8');
             res.set('Access-Control-Allow-Origin', '*');
             const cleaned = cleanSubtitleText(text);
@@ -452,8 +476,8 @@ export function createApiRouter(addonManager: any, db: any, registry: any) {
             if (k === 'path')
                 continue;
             if (Array.isArray(v))
-                v.forEach(item => qs.append(k, String(item)));
-            else if (v !== undefined)
+                v.forEach(item => { if (!qs.getAll(k).includes(String(item))) qs.append(k, String(item)); });
+            else if (v !== undefined && !qs.has(k))
                 qs.append(k, String(v));
         }
         qs.set('api_key', key);
@@ -557,7 +581,7 @@ export function createApiRouter(addonManager: any, db: any, registry: any) {
         let data = Buffer.alloc(0);
         stream.on('data', (chunk) => { data = Buffer.concat([data, chunk]); });
         stream.on('end', () => {
-            const text = data.toString('utf-8');
+            const text = decodeSubtitleBuffer(data);
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
             res.send(text);
         });
@@ -573,7 +597,7 @@ export function createApiRouter(addonManager: any, db: any, registry: any) {
         // Check cache
         const cacheFile = path.join(SUB_CACHE_DIR, `${fileId}.srt`);
         if (fs.existsSync(cacheFile)) {
-            const cached = fs.readFileSync(cacheFile, 'utf-8');
+            const cached = decodeSubtitleBuffer(fs.readFileSync(cacheFile));
             res.setHeader('Content-Type', 'text/plain; charset=utf-8');
             res.send(cached);
             return;
@@ -589,7 +613,7 @@ export function createApiRouter(addonManager: any, db: any, registry: any) {
                 res.status(502).json({ error: 'Subtitle download failed' });
                 return;
             }
-            const text = await subRes.text();
+            const text = decodeSubtitleBuffer(Buffer.from(await subRes.arrayBuffer()));
             // Cache to disk
             try {
                 if (!fs.existsSync(SUB_CACHE_DIR))

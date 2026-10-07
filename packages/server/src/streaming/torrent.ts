@@ -143,7 +143,40 @@ function pickBestFile(files: any[], preferredIdx: number): { file: any; idx: num
 }
 
 function needsTranscode(filename: string): boolean {
-  return /\b(truehd|dts|dts-hd|dts:x|dts-es|ac3|eac3|ddp)\b/i.test(filename)
+  const f = filename.toLowerCase()
+  // Browser-unsupported audio codecs (catch "DDP5", "DD+5.1", "EAC-3", "AC3", "DTS-HD", "TrueHD", "Dolby")
+  if (/\b(truehd|dts|dolby)\b/.test(f)) return true
+  if (/(?<![a-z])(e?ac|dd)[ +\-_.]?[3p+]/.test(f)) return true
+  return false
+}
+
+const BROWSER_SAFE_AUDIO = ['aac', 'mp3', 'opus', 'vorbis', 'flac', 'pcm', 'alac']
+
+async function detectAudioNeedsTranscode(file: any, logId: string): Promise<boolean> {
+  try {
+    const end = Math.min(file.length - 1, 4 * 1024 * 1024)
+    const rs = file.createReadStream({ start: 0, end })
+    const result = await Promise.race<boolean>([
+      new Promise<boolean>((resolve) => {
+        const p = spawn(FFPROBE_PATH, ['-v', 'error', '-select_streams', 'a:0', '-show_entries', 'stream=codec_name', '-of', 'csv=p=0', 'pipe:0'], { stdio: ['pipe', 'pipe', 'pipe'] })
+        let out = ''
+        p.stdout.on('data', (d: Buffer) => { out += d.toString() })
+        p.on('close', () => {
+          const codec = out.trim().split('\n')[0]?.trim().toLowerCase() || ''
+          if (!codec) { resolve(true); return } // unknown → transcode to be safe
+          resolve(!BROWSER_SAFE_AUDIO.some((c) => codec.startsWith(c)))
+        })
+        p.on('error', () => resolve(false))
+        rs.pipe(p.stdin)
+      }),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 3000)),
+    ])
+    rs.destroy()
+    if (result) console.log(`[Torrent ${logId}] ffprobe: audio codec needs transcode`)
+    return result
+  } catch {
+    return false
+  }
 }
 
 function peerCount(torrent: any): number {
@@ -225,6 +258,14 @@ export async function streamTorrentHandler(req: Request, res: Response): Promise
         failWithError(504, 'No peers found after 8 seconds. The torrent may be dead or the file is unavailable.')
       }, 8000)
 
+      // Watchdog: never leave a request hanging (e.g. internal crash during stream setup)
+      const watchdog = setTimeout(() => {
+        if (!res.headersSent && !res.destroyed && !res.writableEnded) {
+          failWithError(504, 'Stream setup timed out after 30s — torrent unavailable')
+        }
+      }, 30000)
+      res.on('close', () => clearTimeout(watchdog))
+
     peerLogInterval = setInterval(() => {
       if (torrent.ready && peerCount(torrent) > 0 && !settled) {
         clearTimeout(peerTimeout)
@@ -239,9 +280,10 @@ export async function streamTorrentHandler(req: Request, res: Response): Promise
       settled = true
       if (peerLogInterval) clearInterval(peerLogInterval)
       clearTimeout(peerTimeout)
+      clearTimeout(watchdog)
     }
 
-    function proceedStream(): void {
+    async function proceedStream(): Promise<void> {
       if (res.destroyed) return
       const { file, idx } = pickBestFile(torrent.files, fileIdx)
       if (!file) {
@@ -258,7 +300,12 @@ export async function streamTorrentHandler(req: Request, res: Response): Promise
       const filename = file.name || (req.query.filename as string) || ''
       const mime = mimeType(filename)
       const isIOSClient = /iPad|iPhone|iPod/i.test(req.headers['user-agent'] || '')
-      const fileNeedsTranscode = needsTranscode(filename) || isIOSClient
+      let fileNeedsTranscode = needsTranscode(filename) || isIOSClient
+      if (!fileNeedsTranscode) {
+        try {
+          fileNeedsTranscode = await detectAudioNeedsTranscode(file, logId)
+        } catch { /* keep direct play */ }
+      }
 
       if (range) {
         const parts = range.replace(/bytes=/, '').split('-')
@@ -577,7 +624,7 @@ export function transcodeTorrentHandler(req: Request, res: Response): void {
         }
         const forceVideoTranscode = /iPad|iPhone|iPod/i.test(req.headers['user-agent'] || '')
         const ffmpegArgs: string[] = [
-          '-re', '-i', 'pipe:0',
+          '-i', 'pipe:0',
           ...(forceVideoTranscode ? ['-c:v', 'h264_nvenc', '-preset', 'p1', '-cq', '28', '-profile:v', 'main', '-level', '41', '-pix_fmt', 'yuv420p', '-g', '24', '-keyint_min', '24', '-bf', '0'] : ['-c:v', 'copy']),
           '-c:a', 'aac', '-b:a', '256k', '-f', 'mp4', '-movflags', '+frag_keyframe+empty_moov', '-max_muxing_queue_size', '1024', '-y', 'pipe:1',
         ]

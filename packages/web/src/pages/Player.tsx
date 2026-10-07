@@ -88,7 +88,7 @@ function parseVTT(content: string): Cue[] {
       const toS = (h: string, mm: string, s: string, ms: string) => parseInt(h)*3600 + parseInt(mm)*60 + parseInt(s) + parseInt(ms)/1000
       cur = { start: toS(m[1], m[2], m[3], m[4]), end: toS(m[5], m[6], m[7], m[8]), text: '' }
     } else if (cur && line.trim() && !line.startsWith('WEBVTT') && !line.startsWith('NOTE') && !/^\d+$/.test(line.trim())) {
-      cur.text = (cur.text || '') + '\n' + line
+      cur.text = (cur.text || '') + '\n' + line.replace(/<\/?font[^>]*>/gi, '')
     }
   }
   if (cur?.start != null && cur.end != null && cur.text) cues.push({ start: cur.start, end: cur.end, text: cur.text.trim() })
@@ -129,6 +129,7 @@ export function Player() {
   const seekBaseUrlRef = useRef('')
   const seekOffsetRef = useRef(0)
   const fetchCtlRef = useRef<AbortController | null>(null)
+  const endedRecoveryRef = useRef(0)
 
   // Subtitle state
   const [subtitles, setSubtitles] = useState<SubItem[]>([])
@@ -141,7 +142,7 @@ export function Player() {
   const [subFetchKey, setSubFetchKey] = useState(0)
   const [subFontSize, setSubFontSize] = useState(1.0)
   const [subShadow, setSubShadow] = useState(true)
-  const [subLine, setSubLine] = useState(90)
+  const [subLine, setSubLine] = useState(82)
   const [subSearch, setSubSearch] = useState('')
   const cueMap = useRef<Map<string, Cue[]>>(new Map())
   const activeTrack = useRef<TextTrack | null>(null)
@@ -542,7 +543,7 @@ export function Player() {
         ? (probeUrl.includes('?') ? probeUrl.replace('?', '/transcode?') : probeUrl + '/transcode')
         : probeUrl
       try {
-        const ctl = new AbortController(); fetchCtlRef.current = ctl; const t = setTimeout(() => ctl.abort(), 5000)
+        const ctl = new AbortController(); fetchCtlRef.current = ctl; const t = setTimeout(() => ctl.abort(), 10000)
         const res = await fetch(probeUrl, { headers: { Range: 'bytes=0-0' }, signal: ctl.signal }); clearTimeout(t)
         if (cancelled) return
         if (res.ok || res.status === 206) {
@@ -582,6 +583,17 @@ export function Player() {
             }
             v.onerror = () => { if (cancelled) return; if (v.error?.code === 4) { tryNextStream() } }
             v.onended = () => {
+              const t = v.currentTime
+              const premature = isTranscodeRef.current && totalDuration > 0 && t > 5 && t < totalDuration - 15
+              if (premature && endedRecoveryRef.current < 3) {
+                endedRecoveryRef.current++
+                console.log(`[player] premature ended at ${t.toFixed(1)}s of ${totalDuration}s — recovery #${endedRecoveryRef.current}`)
+                setTimeout(() => {
+                  seekInRange(Math.max(0, t - 2))
+                  v.play().catch(() => {})
+                }, 500)
+                return
+              }
               setPlaying(false)
               if (bingeMode && type === 'series' && season != null && episode != null) {
                 const nextEp = episode + 1
@@ -592,6 +604,7 @@ export function Player() {
                 }
               }
             }
+            endedRecoveryRef.current = 0
             v.src = playUrl; v.load()
             return
           }
