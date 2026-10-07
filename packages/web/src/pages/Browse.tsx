@@ -280,9 +280,9 @@ function ResultsGrid({ items, viewMode, loadingMore, hasMore, onLoadMore }: { it
 
   return (
     <>
-      <div className="full-grid">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 {gap-y-8}">
         {items.map((item, i) => (
-          <PosterCard key={item.id} id={item.id} type={item.type || 'movie'} name={item.name} poster={item.poster} imdbRating={item.imdbRating} releaseInfo={item.releaseInfo} className={`animate-fade-up stagger-${(i % 8) + 1}`} />
+          <PosterCard key={item.id} id={item.id} type={item.type || 'movie'} name={item.name} poster={item.poster} imdbRating={item.imdbRating} releaseInfo={item.releaseInfo} className={`poster-card-transform stagger-${(i % 7) + 1}`} />
         ))}
       </div>
       {onLoadMore && hasMore && (
