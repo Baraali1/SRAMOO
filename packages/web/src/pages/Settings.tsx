@@ -46,7 +46,7 @@ export function SettingsPage() {
     return (
       <div className="settings-page">
         <h1>Settings</h1>
-        <div className="settings-card">
+<div className="settings-card glass-card">
           <div className="skeleton" style={{ height: 20, width: 140 }} />
         </div>
       </div>

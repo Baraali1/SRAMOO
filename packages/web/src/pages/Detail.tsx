@@ -272,8 +272,8 @@ export function Detail() {
             </button>
 
             {/* Title + Meta */}
-            <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight mb-4">
-              {meta.name}
+<h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight mb-4" style={{ background: 'linear-gradient(135deg, #e8e8ed 0%, #1a98ff 100%)', '-webkit-background-clip': 'text', '-webkit-text-fill-color': 'transparent', backgroundClip: 'text' }}>
+               {meta.name}
             </h1>
 
             <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -293,7 +293,7 @@ export function Detail() {
             {meta.genres && (
               <div className="flex flex-wrap gap-2 mb-5">
                 {meta.genres.slice(0, 5).map((g: string) => (
-                  <span key={g} className="text-[11px] px-3 py-1 rounded-full border border-white/[0.06] text-white/40 bg-white/[0.02]">{g}</span>
+                  <span key={g} className="text-[11px] px-3 py-1 rounded-full border border-white/[0.06] bg-white/[0.02] text-white/{g === 'Action' ? '90' : g === 'Drama' ? '80' : '70'} {g === 'Action' ? 'border-red-500' : g === 'Drama' ? 'border-blue-500' : 'border-green-500'} text-white">{g}</span>
                 ))}
               </div>
             )}

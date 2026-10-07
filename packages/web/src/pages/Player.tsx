@@ -1050,6 +1050,18 @@ export function Player() {
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" ry="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="14" y2="16"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
               </button>
 
+              {/* Quality selector */}
+              <button onClick={() => { setShowSubMenu(false); setShowAudioMenu(false); setShowFileMenu(false) }} aria-label="Quality"
+                style={{ width:44,height:44,borderRadius:'50%',border:'none',background:'transparent',color:'rgba(255,255,255,0.5)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M2 12l4-2 4 2-4 2-4-2z"/></svg>
+              </button>
+
+              {/* Picture-in-PiP button */}
+              <button onClick={() => v?.requestPictureInPicture?.()?.catch(() => {})} aria-label="Picture-in-PiP"
+                style={{ width:44,height:44,borderRadius:'50%',border:'none',background:'transparent',color:'rgba(255,255,255,0.5)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" ry="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="14" y2="16"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+              </button>
+
                     {subsLoading && (
                       <div style={{ display:'flex',alignItems:'center',justifyContent:'center',padding:'6px 0',gap:8 }}>
                         <div style={{ width:12,height:12,border:'2px solid rgba(255,255,255,0.06)',borderTopColor:'#1a98ff',borderRadius:'50%',animation:'spin-slow 0.6s linear infinite' }} />

@@ -114,13 +114,35 @@ export function Browse() {
         <h1 className="text-lg font-bold">{typeLabel}</h1>
       </div>
 
-      {/* Glass filter bar */}
+{/* Glass filter bar */}
       <div className="px-6 mb-4 flex flex-wrap items-center gap-3">
         <div className="glass-tab-bar">
           <button className={`glass-tab${mode === 'catalogs' ? ' active' : ''}`} onClick={() => setMode('catalogs')}>Featured</button>
           <button className={`glass-tab${mode === 'genre' ? ' active' : ''}`} onClick={() => setMode('genre')}>Genres</button>
-          <button className={`glass-tab${mode === 'year' ? ' active' : ''}`} onClick={() => setMode('year')}>By Year</button>
+          <button className={`glass-tab${mode === 'year' ? ' active' : ''}`} onClick={() => setMode('year')}>Years</button>
         </div>
+        <div className="flex items-center gap-4 mt-2">
+          <select
+            className="glass-input"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortKey)}
+            style={{ minWidth: 120 }}
+          >
+            {SORT_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          <select
+            className="glass-input"
+            value={viewMode}
+            onChange={(e) => setViewMode(e.target.value as ViewMode)}
+            style{{ minWidth: 80 }}
+          >
+            <option value="grid">Grid</option>
+            <option value="list">List</option>
+          </select>
+        </div>
+      </div>
 
         <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortKey)} className="sort-select">
           {SORT_OPTIONS.map((o) => (
