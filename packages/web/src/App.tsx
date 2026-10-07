@@ -3,7 +3,6 @@ import { lazy, Suspense, useEffect, useState, useCallback } from 'react'
 import { AppProvider } from './AppContext.js'
 import { ToastProvider } from './components/Toast.js'
 import { AuthProvider, useAuth } from './auth/AuthContext.js'
-import { ProfileSelection } from './components/ProfileSelection.js'
 import { MainLayout } from './components/MainLayout.js'
 import { Home } from './pages/Home.js'
 import { Browse } from './pages/Browse.js'
@@ -17,27 +16,6 @@ import { CalendarPage } from './pages/Calendar.js'
 import { Login } from './pages/Login.js'
 import { Register } from './pages/Register.js'
 import { useKeyboard } from './hooks/useKeyboard.js'
-
-const PROFILE_KEY = 'sramo_active_profile'
-
-interface Profile {
-  id: string
-  name: string
-  emoji: string
-  color: string
-}
-
-function loadProfile(): Profile | null {
-  try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null') } catch { return null }
-}
-
-function saveProfile(p: Profile) {
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(p))
-}
-
-function clearProfile() {
-  localStorage.removeItem(PROFILE_KEY)
-}
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -63,13 +41,29 @@ function NotFound() {
 export default function App() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [profile, setProfile] = useState<Profile | null>(() => loadProfile())
-  const [darkMode, setDarkMode] = useState(() => {
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    const stored = localStorage.getItem('sramo_dark_mode')
-    if (stored !== null) return stored === 'true'
-    return prefersDark
+  const { user, token, login, register, logout } = useAuth()
+  const [profile, setProfile] = useState<Profile | null>(() => {
+    // If user is logged in via token, try localStorage profile first
+    if (token) {
+      const stored = localStorage.getItem('sramo_profile')
+      if (stored) return JSON.parse(stored)
+      // If no stored profile yet, user starts without profile (will be prompted later)
+      return null
+    }
+    // If not logged in, check localStorage profile as before
+    try { return JSON.parse(localStorage.getItem('sramo_active_profile') || 'null') } catch { return null }
   })
+
+  useEffect(() => {
+    // Sync auth state with localStorage
+    if (token) {
+      localStorage.setItem('sramo_token', token)
+      localStorage.setItem('sramo_profile', JSON.stringify(profile))
+    } else {
+      localStorage.removeItem('sramo_token')
+      localStorage.removeItem('sramo_profile')
+    }
+  }, [token, profile])
 
   useEffect(() => {
     if (darkMode) document.body.classList.add('dark')
@@ -85,18 +79,43 @@ export default function App() {
   })
 
   const handleProfileSelect = useCallback((p: Profile) => {
-    saveProfile(p)
+    localStorage.setItem('sramo_profile', JSON.stringify(p))
     setProfile(p)
   }, [])
 
   const handleSwitchProfile = useCallback(() => {
-    clearProfile()
+    localStorage.removeItem('sramo_profile')
     setProfile(null)
   }, [])
 
-  // Profile selection screen
+  // Authentication check - show login if not authenticated
+  if (!token) {
+    return (
+      <AuthProvider>
+      <AppProvider>
+        <ToastProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ToastProvider>
+      </AppProvider>
+      </AuthProvider>
+    )
+  }
+
+  // If authenticated but no profile selected, show profile selection
   if (!profile) {
-    return <ProfileSelection onSelect={handleProfileSelect} />
+    return (
+      <AuthProvider>
+      <AppProvider>
+        <ToastProvider>
+          <ProfileSelection onSelect={handleProfileSelect} />
+        </ToastProvider>
+      </AppProvider>
+      </AuthProvider>
+    )
   }
 
   const isPlayerRoute = location.pathname.startsWith('/player/')
@@ -110,7 +129,7 @@ export default function App() {
             <Route path="/player/:type/:id" element={<Suspense fallback={null}><Player /></Suspense>} />
           </Routes>
         ) : (
-          <MainLayout profile={profile} onSwitchProfile={handleSwitchProfile}>
+          <MainLayout profile={profile} onSwitchProfile={handleProfileSelect}>
             <div className="bg-orb bg-orb-purple" />
             <div className="bg-orb bg-orb-green" />
             <div className="main-content">
