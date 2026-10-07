@@ -8,6 +8,18 @@
   NODE_VERSION = "18"
 
 [[redirects]]
+  from = "/api/*"
+  to = "https://prominent-cad-air-straight.trycloudflare.com/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/addon/*"
+  to = "https://prominent-cad-air-straight.trycloudflare.com/addon/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
