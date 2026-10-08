@@ -272,7 +272,7 @@ export function Detail() {
             </button>
 
             {/* Title + Meta */}
-<h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight mb-4" style={{ background: 'linear-gradient(135deg, #e8e8ed 0%, #1a98ff 100%)', '-webkit-background-clip': 'text', '-webkit-text-fill-color': 'transparent', backgroundClip: 'text' }}>
+<h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight mb-4" style={{ background: 'linear-gradient(135deg, #e8e8ed 0%, #1a98ff 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
                {meta.name}
             </h1>
 

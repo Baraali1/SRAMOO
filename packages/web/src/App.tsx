@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState, useCallback } from 'react'
 import { AppProvider } from './AppContext.js'
 import { ToastProvider } from './components/Toast.js'
 import { AuthProvider, useAuth } from './auth/AuthContext.js'
+import { ProfileSelection } from './components/ProfileSelection.js'
 import { MainLayout } from './components/MainLayout.js'
 import { Home } from './pages/Home.js'
 import { Browse } from './pages/Browse.js'
@@ -16,6 +17,13 @@ import { CalendarPage } from './pages/Calendar.js'
 import { Login } from './pages/Login.js'
 import { Register } from './pages/Register.js'
 import { useKeyboard } from './hooks/useKeyboard.js'
+
+interface Profile {
+  id: string
+  name: string
+  emoji: string
+  color: string
+}
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -38,10 +46,10 @@ function NotFound() {
   )
 }
 
-export default function App() {
+function AppInner() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { user, token, login, register, logout } = useAuth()
+  const { token } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(() => {
     // If user is logged in via token, try localStorage profile first
     if (token) {
@@ -58,17 +66,12 @@ export default function App() {
     // Sync auth state with localStorage
     if (token) {
       localStorage.setItem('sramo_token', token)
-      localStorage.setItem('sramo_profile', JSON.stringify(profile))
+      if (profile) localStorage.setItem('sramo_profile', JSON.stringify(profile))
     } else {
       localStorage.removeItem('sramo_token')
       localStorage.removeItem('sramo_profile')
     }
   }, [token, profile])
-
-  useEffect(() => {
-    if (darkMode) document.body.classList.add('dark')
-    else document.body.classList.remove('dark')
-  }, [darkMode])
 
   useKeyboard({
     '/': () => {
@@ -91,37 +94,32 @@ export default function App() {
   // Authentication check - show login if not authenticated
   if (!token) {
     return (
-      <AuthProvider>
       <AppProvider>
         <ToastProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </ToastProvider>
       </AppProvider>
-      </AuthProvider>
     )
   }
 
   // If authenticated but no profile selected, show profile selection
   if (!profile) {
     return (
-      <AuthProvider>
       <AppProvider>
         <ToastProvider>
           <ProfileSelection onSelect={handleProfileSelect} />
         </ToastProvider>
       </AppProvider>
-      </AuthProvider>
     )
   }
 
   const isPlayerRoute = location.pathname.startsWith('/player/')
 
   return (
-    <AuthProvider>
     <AppProvider>
       <ToastProvider>
         {isPlayerRoute ? (
@@ -129,7 +127,7 @@ export default function App() {
             <Route path="/player/:type/:id" element={<Suspense fallback={null}><Player /></Suspense>} />
           </Routes>
         ) : (
-          <MainLayout profile={profile} onSwitchProfile={handleProfileSelect}>
+          <MainLayout profile={profile} onSwitchProfile={handleSwitchProfile}>
             <div className="bg-orb bg-orb-purple" />
             <div className="bg-orb bg-orb-green" />
             <div className="main-content">
@@ -155,6 +153,13 @@ export default function App() {
         )}
       </ToastProvider>
     </AppProvider>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
     </AuthProvider>
   )
 }

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth/AuthContext.js'
 import { api, IMG } from '../api.js'
 import { tmdb } from '../tmdb.js'
 
@@ -274,31 +273,22 @@ export function Player() {
   }, [id])
 
   // ── Persistent progress saver (auto-save every 10s + on ended) ──
-  const { user } = useAuth()
   useEffect(() => {
+    const v = videoRef.current
     if (!v || !playing) return
-    let timer: NodeJS.Timeout
-    const saveProgress = async () => {
+    let timer: ReturnType<typeof setInterval>
+    const saveProgress = () => {
       const t = +v.currentTime.toFixed(1)
       localStorage.setItem(`sramo_progress_${id}`, JSON.stringify(t))
-      // Also save to server if user is logged in
-      if (user?.id) {
-        try {
-          await api.post(`/api/history/${id}/progress`, { progress: t }).catch(() => {})
-        } catch {}
-      }
     }
     timer = setInterval(saveProgress, 10000)
-    const handleEnded = () => {
-      saveProgress()
-      v.removeEventListener('ended', handleEnded)
-    }
+    const handleEnded = () => saveProgress()
     v.addEventListener('ended', handleEnded)
     return () => {
       clearInterval(timer)
       v.removeEventListener('ended', handleEnded)
     }
-  }, [v, playing, id, user?.id])
+  }, [playing, id])
 
   const showBar = useCallback(() => {
     setBarVisible(true)
@@ -533,15 +523,18 @@ export function Player() {
 
   // ── Subtitle progress tracker ──
   useEffect(() => {
+    const v = videoRef.current
     if (!v || !subsOn || !activeSub || activeSub.startsWith('_inband_')) return
-    const track = v.textTracks.find(t => t.kind === 'subtitles')
+    const track = Array.from(v.textTracks).find(t => t.kind === 'subtitles')
     if (!track || !track.activeCues) return
     let lastCueTime = 0
     const updateProgress = () => {
-      const active = Array.from(track.activeCues).map(c => c.text)
+      const cues = track.activeCues as any as VTTCue[] | null
+      if (!cues) return
+      const active = cues.map(c => c.text)
       if (active.length > 0) {
-        const cue = track.activeCues[0]
-        const progress = +cue.start.toFixed(1)
+        const cue = cues[0]
+        const progress = +(cue.startTime ?? 0).toFixed(1)
         if (progress !== lastCueTime) {
           lastCueTime = progress
           const progressEl = document.getElementById('sub-progress-time') as HTMLSpanElement | null
@@ -558,7 +551,7 @@ export function Player() {
       track.removeEventListener('cuechange', updateProgress)
       v.removeEventListener('timeupdate', timeHandler)
     }
-  }, [v, subsOn, activeSub])
+  }, [subsOn, activeSub])
 
   // ── Fetch torrent file list ──
   useEffect(() => {
@@ -1049,26 +1042,6 @@ export function Player() {
                   <div style={{ position:'absolute',bottom:'100%',right:0,marginBottom:8,background:'rgba(7,7,12,0.94)',backdropFilter:'blur(16px)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:10,padding:8,minWidth:200,zIndex:10,maxHeight:400,overflowY:'auto' }}>
                     <div style={{ fontSize:10,fontWeight:700,color:'#666',textTransform:'uppercase',letterSpacing:'0.06em',padding:'4px 10px',marginBottom:4 }}>Subtitles</div>
                     <button onClick={() => selectSub(null)} style={{ display:'flex',alignItems:'center',width:'100%',padding:'6px 10px',border:'none',background:!activeSub?'rgba(26,152,255,0.08)':'transparent',fontSize:12,color:!activeSub?'#1a98ff':'rgba(255,255,255,0.6)',borderRadius:6,cursor:'pointer' }}>Off</button>
-                </div>
-              </div>
-
-              {/* Picture-in-PiP button */}
-              <button onClick={() => v?.requestPictureInPicture?.()?.catch(() => {})} aria-label="Picture-in-PiP"
-                style={{ width:44,height:44,borderRadius:'50%',border:'none',background:'transparent',color:'rgba(255,255,255,0.5)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" ry="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="14" y2="16"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
-              </button>
-
-              {/* Quality selector */}
-              <button onClick={() => { setShowSubMenu(false); setShowAudioMenu(false); setShowFileMenu(false) }} aria-label="Quality"
-                style={{ width:44,height:44,borderRadius:'50%',border:'none',background:'transparent',color:'rgba(255,255,255,0.5)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M2 12l4-2 4 2-4 2-4-2z"/></svg>
-              </button>
-
-              {/* Picture-in-PiP button */}
-              <button onClick={() => v?.requestPictureInPicture?.()?.catch(() => {})} aria-label="Picture-in-PiP"
-                style={{ width:44,height:44,borderRadius:'50%',border:'none',background:'transparent',color:'rgba(255,255,255,0.5)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" ry="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="14" y2="16"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
-              </button>
 
                     {subsLoading && (
                       <div style={{ display:'flex',alignItems:'center',justifyContent:'center',padding:'6px 0',gap:8 }}>
@@ -1144,6 +1117,18 @@ export function Player() {
                   </div>
                 )}
               </div>
+
+              {/* Picture-in-PiP button */}
+              <button onClick={() => videoRef.current?.requestPictureInPicture?.()?.catch(() => {})} aria-label="Picture-in-PiP"
+                style={{ width:44,height:44,borderRadius:'50%',border:'none',background:'transparent',color:'rgba(255,255,255,0.5)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" ry="2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="14" y2="16"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+              </button>
+
+              {/* Quality selector */}
+              <button onClick={() => { setShowSubMenu(false); setShowAudioMenu(false); setShowFileMenu(false) }} aria-label="Quality"
+                style={{ width:44,height:44,borderRadius:'50%',border:'none',background:'transparent',color:'rgba(255,255,255,0.5)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M2 12l4-2 4 2-4 2-4-2z"/></svg>
+              </button>
 
               {/* Audio tracks dropdown */}
               {audioTracks.length > 1 && (

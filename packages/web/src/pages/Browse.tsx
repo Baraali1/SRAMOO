@@ -136,31 +136,11 @@ export function Browse() {
             className="glass-input"
             value={viewMode}
             onChange={(e) => setViewMode(e.target.value as ViewMode)}
-            style{{ minWidth: 80 }}
+            style={{ minWidth: 80 }}
           >
             <option value="grid">Grid</option>
             <option value="list">List</option>
           </select>
-        </div>
-      </div>
-
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortKey)} className="sort-select">
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-
-        <div className="view-toggle">
-          <button onClick={() => setViewMode('grid')} className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`} title="Grid view">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-            </svg>
-          </button>
-          <button onClick={() => setViewMode('list')} className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`} title="Compact list">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-            </svg>
-          </button>
         </div>
       </div>
 
